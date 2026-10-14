@@ -16,6 +16,12 @@ const CATEGORIES = [
   { name: 'Other', emoji: '📦' }
 ];
 const catEmoji = n => (CATEGORIES.find(c => c.name === n) || { emoji: '📦' }).emoji;
+const CAT_COLORS = {
+  'Housing': '#4e79a7', 'Utilities & Bills': '#f28e2b', 'Groceries': '#59a14f',
+  'Dining Out': '#e15759', 'Personal Care': '#b07aa1', 'Transport': '#17a398',
+  'Entertainment': '#d9a404', 'Health': '#ef6f9c', 'Shopping': '#9c755f', 'Other': '#8d8d93'
+};
+const catColor = n => CAT_COLORS[n] || '#5b8def';
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 const round2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
 const fmt = n => '$' + Math.abs(n).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -120,7 +126,7 @@ function expenseRow(e, showDate) {
     (shared ? '' : '') ;
   const payer = shared ? `<span class="badge">${esc(personName(e.paidBy))} paid · split ${(e.splits || []).length} ways</span>` : '';
   return `<div class="exp-row" data-edit="${e.id}">
-    <div class="exp-emoji">${catEmoji(e.category)}</div>
+    <div class="exp-emoji" style="background:${catColor(e.category)}26">${catEmoji(e.category)}</div>
     <div class="exp-main"><div class="exp-title">${esc(e.title)}${payer}</div>${e.note ? `<div class="exp-note">${esc(e.note)}</div>` : ''}<div class="exp-meta">${meta} · ${esc(e.category)}</div></div>
     <div class="exp-amt">${fmt(e.amount)}</div></div>`;
 }
@@ -167,7 +173,7 @@ function renderSummary() {
     const sub = limit ? `<div class="cat-sub">${over ? '⚠ Over' : 'Budget'} ${fmt(limit)}${over ? ` by ${fmt(byCat[c] - limit)}` : ''}</div>` : '';
     return `<div class="cat-row" data-gocat="${esc(c)}">
       <div class="cat-name">${catEmoji(c)} ${esc(c)}</div><div class="cat-amt">${fmt(byCat[c])}</div>
-      <div class="cat-bar"><div class="cat-fill ${over ? 'over' : ''}" style="width:${max ? byCat[c] / max * 100 : 0}%"></div></div>${sub}</div>`;
+      <div class="cat-bar"><div class="cat-fill ${over ? 'over' : ''}" style="width:${max ? byCat[c] / max * 100 : 0}%;background:${catColor(c)}"></div></div>${sub}</div>`;
   }).join('') : '<div class="empty">No expenses this month yet.<br>Tap ＋ to add your first one.</div>';
 
   const pairs = debtPairs();
@@ -220,7 +226,7 @@ function renderBudget() {
   }).join('');
   $('recurringList').innerHTML = state.recurring.length ? state.recurring.map(r => {
     const added = r.added && r.added[viewMonth];
-    return `<div class="rec-row"><div class="exp-emoji">${catEmoji(r.category)}</div>
+    return `<div class="rec-row"><div class="exp-emoji" style="background:${catColor(r.category)}26">${catEmoji(r.category)}</div>
       <div class="rec-main"><div class="rec-title">${esc(r.title)}</div><div class="rec-meta">${fmt(r.amount)} · day ${r.day} · ${esc(r.category)}</div></div>
       ${added ? '<span class="settled-note">Added ✓</span>' : `<button class="rec-add" data-rec-add="${r.id}">Add for ${monthLabel(viewMonth).split(' ')[0]}</button>`}
       <button class="rec-del" data-rec-del="${r.id}" aria-label="Delete recurring bill">×</button></div>`;
