@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Sync probe</title></head>
+<body>
+<h1 id="out">Running…</h1>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const out = document.getElementById('out');
+firebase.initializeApp({
+  apiKey: "AIzaSyCzleGE2qWif60DXoxaYGA3kqOuv1Xp94Y",
+  authDomain: "billsplit-a7148.firebaseapp.com",
+  projectId: "billsplit-a7148",
+  storageBucket: "billsplit-a7148.firebasestorage.app",
+  messagingSenderId: "356199360313",
+  appId: "1:356199360313:web:880d18351664af49a3eae8"
+});
+const ref = firebase.firestore().collection('households').doc('probe_web');
+ref.set({ state: 'web-probe', updatedAt: new Date().toISOString() })
+  .then(() => ref.get())
+  .then(snap => {
+    const v = snap.exists ? snap.data().state : '(missing)';
+    out.textContent = 'PROBE PASS — wrote and read back: ' + v;
+    document.title = 'PROBE PASS';
+    return ref.delete();
+  })
+  .catch(e => {
+    out.textContent = 'PROBE FAIL — ' + (e && e.code ? e.code : '') + ' ' + (e && e.message ? e.message : e);
+    document.title = 'PROBE FAIL';
+  });
+</script>
+</body></html>
