@@ -37,8 +37,7 @@ h2{font-size:16px;margin:0 0 12px}
 .ring{width:168px;height:168px;transform:rotate(-90deg)}
 .ring circle{fill:none;stroke-width:11;stroke-linecap:round}
 .ring-bg{stroke:#e7ede9}
-.ring-fg{stroke:var(--green);stroke-dasharray:326.7;stroke-dashoffset:326.7;transition:stroke-dashoffset .7s ease, stroke .3s}
-.ring-fg.over{stroke:var(--danger)}
+.ring .ring-seg{stroke-linecap:butt}
 .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ring-pct{font-size:32px;font-weight:800}
 .ring-sub{color:var(--muted);font-size:12px}

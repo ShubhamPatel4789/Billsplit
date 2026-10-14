@@ -153,9 +153,7 @@ function renderSummary() {
   $('statRemaining').textContent = (remaining < 0 ? '−' : '') + fmt(remaining);
   $('statRemaining').style.color = remaining < 0 ? 'var(--danger)' : '';
   $('ringPct').textContent = (budget > 0 ? (spent / budget * 100) : 0).toFixed(1) + '%';
-  const ring = $('ringFg'), C = 326.7;
-  ring.style.strokeDashoffset = C * (1 - pct / 100);
-  ring.classList.toggle('over', remaining < 0);
+  $('ringPct').style.color = remaining < 0 ? 'var(--danger)' : '';
 
   const prev = monthExpenses(shiftMonth(viewMonth, -1));
   const prevSpent = round2(prev.reduce((a, e) => a + e.amount, 0));
@@ -175,6 +173,18 @@ function renderSummary() {
       <div class="cat-name">${catEmoji(c)} ${esc(c)}</div><div class="cat-amt">${fmt(byCat[c])}</div>
       <div class="cat-bar"><div class="cat-fill ${over ? 'over' : ''}" style="width:${max ? byCat[c] / max * 100 : 0}%;background:${catColor(c)}"></div></div>${sub}</div>`;
   }).join('') : '<div class="empty">No expenses this month yet.<br>Tap ＋ to add your first one.</div>';
+
+  // Donut ring: one coloured segment per category, sized by its share
+  const RC = 326.7;
+  const denom = (budget > 0 && spent <= budget) ? budget : (spent || 1);
+  let acc = 0;
+  $('ringSegs').innerHTML = cats.map(c => {
+    const len = byCat[c] / denom * RC;
+    const gap = cats.length > 1 ? 2.5 : 0;
+    const seg = `<circle class="ring-seg" cx="60" cy="60" r="52" stroke="${catColor(c)}" stroke-dasharray="${Math.max(0.5, len - gap)} ${RC}" stroke-dashoffset="${-acc}"></circle>`;
+    acc += len;
+    return seg;
+  }).join('');
 
   const pairs = debtPairs();
   $('balanceSnapshot').innerHTML = pairs.length
