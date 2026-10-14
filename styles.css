@@ -51,6 +51,7 @@ h2{font-size:16px;margin:0 0 12px}
 .cat-row{display:grid;grid-template-columns:1fr auto;gap:3px 10px;cursor:pointer}
 .cat-name{font-weight:600;font-size:14px}
 .cat-amt{font-weight:700;font-size:14px}
+.cat-pct{color:var(--muted);font-weight:600;font-size:12.5px;margin-left:4px}
 .cat-bar{grid-column:1/-1;height:8px;background:#edf1ee;border-radius:99px;overflow:hidden}
 .cat-fill{height:100%;background:var(--green);border-radius:99px;transition:width .6s ease}
 .cat-fill.over{box-shadow:inset 0 0 0 2px var(--danger)}
