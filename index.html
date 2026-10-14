@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b7a4b">
+<title>Budget &amp; Bill Splitter</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">💰 Budget &amp; Bill Splitter</div>
+    <nav class="side-nav">
+      <button data-tab="summary" class="nav-btn active"><span>📊</span>Summary</button>
+      <button data-tab="expenses" class="nav-btn"><span>🧾</span>Expenses</button>
+      <button data-tab="split" class="nav-btn"><span>👥</span>Split</button>
+      <button data-tab="budget" class="nav-btn"><span>🎯</span>Budget</button>
+    </nav>
+    <button class="add-btn side-add" id="addBtnSide">＋ Add expense</button>
+    <div class="side-foot">Data is saved on this device.<br>Use Export in Budget to back up to Google Drive.</div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="brand mobile-brand">💰 Budget &amp; Bill Splitter</div>
+      <div class="month-nav">
+        <button id="prevMonth" aria-label="Previous month">‹</button>
+        <div id="monthLabel" class="month-label">—</div>
+        <button id="nextMonth" aria-label="Next month">›</button>
+      </div>
+    </header>
+
+    <!-- SUMMARY -->
+    <section id="view-summary" class="view active">
+      <div class="grid">
+        <div class="card ring-card">
+          <div class="ring-wrap">
+            <svg class="ring" viewBox="0 0 120 120">
+              <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+              <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="ring-center">
+              <div class="ring-pct" id="ringPct">0%</div>
+              <div class="ring-sub">of budget used</div>
+            </div>
+          </div>
+          <div class="ring-stats">
+            <div><div class="stat-label">Total spent</div><div class="stat-value" id="statSpent">$0.00</div></div>
+            <div><div class="stat-label">Budget</div><div class="stat-value" id="statBudget">$0.00</div></div>
+            <div><div class="stat-label">Remaining</div><div class="stat-value" id="statRemaining">$0.00</div></div>
+          </div>
+          <div class="delta" id="monthDelta"></div>
+        </div>
+
+        <div class="card">
+          <h2>By category</h2>
+          <div id="categoryBreakdown" class="cat-list"></div>
+        </div>
+
+        <div class="card" id="balanceCard">
+          <h2>Balances</h2>
+          <div id="balanceSnapshot"></div>
+        </div>
+
+        <div class="card">
+          <h2>Recent</h2>
+          <div id="recentList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXPENSES -->
+    <section id="view-expenses" class="view">
+      <div class="card">
+        <div class="filters">
+          <input type="search" id="searchInput" placeholder="Search expenses…">
+          <select id="categoryFilter"></select>
+        </div>
+        <div class="list-total" id="expensesTotal"></div>
+        <div id="expenseList"></div>
+      </div>
+    </section>
+
+    <!-- SPLIT -->
+    <section id="view-split" class="view">
+      <div class="grid">
+        <div class="card">
+          <h2>People</h2>
+          <div id="peopleList" class="people-list"></div>
+          <form id="addPersonForm" class="inline-form">
+            <input type="text" id="newPersonName" placeholder="Add a person…" maxlength="40" required>
+            <button type="submit">Add</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Who owes whom</h2>
+          <div id="balanceList"></div>
+        </div>
+        <div class="card">
+          <h2>Settlements</h2>
+          <div id="settlementList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BUDGET -->
+    <section id="view-budget" class="view">
+      <div class="grid">
+        <div class="card">
+          <h2>Monthly budget</h2>
+          <form id="monthlyBudgetForm" class="inline-form">
+            <input type="number" id="monthlyBudgetInput" min="0" step="0.01" inputmode="decimal">
+            <button type="submit">Save</button>
+          </form>
+          <h2 class="mt">Per-category budgets</h2>
+          <div id="categoryBudgets"></div>
+        </div>
+        <div class="card">
+          <h2>Recurring bills</h2>
+          <div id="recurringList"></div>
+          <form id="addRecurringForm" class="stack-form">
+            <input type="text" id="recTitle" placeholder="Name (e.g. Rent)" maxlength="60" required>
+            <div class="row">
+              <input type="number" id="recAmount" placeholder="Amount" min="0.01" step="0.01" inputmode="decimal" required>
+              <input type="number" id="recDay" placeholder="Day" min="1" max="31" required>
+            </div>
+            <select id="recCategory"></select>
+            <button type="submit">Add recurring bill</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Data backup</h2>
+          <p class="hint">Export saves everything as one JSON file — store it in the “Budget and Bill Splitter” folder in Google Drive. Import restores it on any device.</p>
+          <div class="row">
+            <button id="exportBtn" class="secondary">⬇ Export JSON</button>
+            <label class="secondary file-label">⬆ Import JSON<input type="file" id="importFile" accept="application/json" hidden></label>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <button class="fab" id="addBtnFab" aria-label="Add expense">＋</button>
+
+  <nav class="bottom-nav">
+    <button data-tab="summary" class="nav-btn active"><span>📊</span>Summary</button>
+    <button data-tab="expenses" class="nav-btn"><span>🧾</span>Expenses</button>
+    <button data-tab="split" class="nav-btn"><span>👥</span>Split</button>
+    <button data-tab="budget" class="nav-btn"><span>🎯</span>Budget</button>
+  </nav>
+</div>
+
+<!-- Add / edit sheet -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true">
+  <div class="sheet-handle"></div>
+  <h2 id="sheetTitle">Add expense</h2>
+  <form id="expenseForm">
+    <div class="segmented">
+      <button type="button" id="modePersonal" class="seg active">Personal</button>
+      <button type="button" id="modeSplit" class="seg">Split</button>
+    </div>
+    <label>Amount<input type="number" id="fAmount" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" required></label>
+    <label>Title<input type="text" id="fTitle" maxlength="80" placeholder="What was it for?" required></label>
+    <label>Category<select id="fCategory"></select></label>
+    <label>Date &amp; time<input type="datetime-local" id="fDate" required></label>
+    <div id="splitFields" class="hidden">
+      <label>Paid by<select id="fPaidBy"></select></label>
+      <div class="split-head">
+        <span>Split between</span>
+        <button type="button" id="toggleShares" class="link-btn">Custom amounts</button>
+      </div>
+      <div id="splitPeople"></div>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" id="deleteBtn" class="danger hidden">Delete</button>
+      <button type="button" id="cancelBtn" class="secondary">Cancel</button>
+      <button type="submit" class="primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
