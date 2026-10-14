@@ -15,7 +15,7 @@ A mobile-friendly web app for **splitting bills** and **tracking a monthly budge
 
 ## How data works
 
-Data is stored in the browser on each device (localStorage). Use **Budget → Export JSON** to back up, and **Import JSON** to restore the same data on another phone or computer.
+All devices share **one cloud database** (Firebase Firestore, free Spark plan): open the app on any phone and everyone sees the same data, updated live. Each device also keeps a local copy so the app still opens offline; changes sync when back online. Use **Budget → Export JSON** for a manual backup file any time (store it in Google Drive).
 
 ## Run locally
 
