@@ -43,6 +43,71 @@ const displayDate = iso => {
   return `${day} ${mon} · ${hh}:${mm}`;
 };
 
+/* ---------- cloud sync (Firebase Firestore, shared by all phones) ---------- */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCzleGE2qWif60DXoxaYGA3kqOuv1Xp94Y",
+  authDomain: "billsplit-a7148.firebaseapp.com",
+  projectId: "billsplit-a7148",
+  storageBucket: "billsplit-a7148.firebasestorage.app",
+  messagingSenderId: "356199360313",
+  appId: "1:356199360313:web:880d18351664af49a3eae8"
+};
+const HOUSEHOLD_ID = 'hh_9e489c5a2d3acedf88fbc07b';
+let houseRef = null, lastPushed = '', pushTimer = null, syncStarted = false, pendingPush = false;
+function schedulePush() {
+  if (!houseRef) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushNow, 700);
+}
+function pushNow() {
+  if (!houseRef) return;
+  if (!syncStarted) { pendingPush = true; return; }
+  const payload = JSON.stringify(state);
+  lastPushed = payload;
+  houseRef.set({ state: payload, updatedAt: new Date().toISOString() }).catch(e => console.warn('Cloud push failed', e));
+}
+function adoptRemote(remote) {
+  try {
+    const parsed = JSON.parse(remote);
+    if (!parsed || !Array.isArray(parsed.expenses) || !Array.isArray(parsed.people)) return;
+    state = parsed;
+    try { localStorage.setItem(LS_KEY, remote); } catch (e) {}
+    const months = [...new Set(state.expenses.map(e => monthKey(e.date)))].sort();
+    if (!months.includes(viewMonth)) viewMonth = months.length ? months[months.length - 1] : nowMonthKey();
+    render();
+  } catch (e) { console.warn('Could not apply cloud data', e); }
+}
+function initSync() {
+  const el = document.getElementById('syncStatus');
+  if (!window.firebase || !FIREBASE_CONFIG) { if (el) el.textContent = '☁️ Cloud sync unavailable — data is stored on this device only.'; return; }
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    houseRef = firebase.firestore().collection('households').doc(HOUSEHOLD_ID);
+    houseRef.onSnapshot(snap => {
+      const wasFirst = !syncStarted;
+      syncStarted = true;
+      if (el) el.textContent = '☁️ Cloud sync ON — every phone with this app sees the same data, live.';
+      if (!snap.exists) { pushNow(); return; }
+      const remote = snap.data().state;
+      if (!remote || remote === lastPushed) { if (pendingPush) { pendingPush = false; pushNow(); } return; }
+      if (wasFirst) {
+        try {
+          const rp = JSON.parse(remote);
+          if ((state.expenses || []).length > (rp.expenses || []).length) { pushNow(); return; }
+        } catch (e) {}
+      }
+      adoptRemote(remote);
+      if (pendingPush) { pendingPush = false; pushNow(); }
+    }, err => {
+      console.warn('Cloud sync error', err);
+      if (el) el.textContent = '☁️ Cloud sync could not connect — data still saves on this device.';
+    });
+  } catch (e) {
+    console.warn('Cloud sync init failed', e);
+    if (el) el.textContent = '☁️ Cloud sync unavailable — data is stored on this device only.';
+  }
+}
+
 function seedState() {
   const personal = (title, amount, category, date) => ({
     id: uid() + Math.random().toString(36).slice(2, 6), title, amount, category, date,
@@ -72,7 +137,7 @@ try {
   state = raw ? JSON.parse(raw) : seedState();
   if (!raw) save();
 } catch (e) { state = seedState(); }
-function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
 
 let viewMonth = (() => {
   const months = [...new Set(state.expenses.map(e => monthKey(e.date)))].sort();
@@ -620,3 +685,4 @@ $('receiptFile').addEventListener('change', async ev => {
 })();
 fillCategorySelects();
 render();
+initSync();

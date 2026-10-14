@@ -133,6 +133,7 @@
         </div>
         <div class="card">
           <h2>Data backup</h2>
+          <p class="hint" id="syncStatus">☁️ Cloud sync: connecting…</p>
           <p class="hint">Export saves everything as one JSON file — store it in the “Budget and Bill Splitter” folder in Google Drive. Import restores it on any device.</p>
           <div class="row">
             <button id="exportBtn" class="secondary">⬇ Export JSON</button>
@@ -192,6 +193,8 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="app.js?v=8"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
