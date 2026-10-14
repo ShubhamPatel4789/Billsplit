@@ -235,7 +235,7 @@ function renderSummary() {
     const over = limit && byCat[c] > limit;
     const sub = limit ? `<div class="cat-sub">${over ? '⚠ Over' : 'Budget'} ${fmt(limit)}${over ? ` by ${fmt(byCat[c] - limit)}` : ''}</div>` : '';
     return `<div class="cat-row" data-gocat="${esc(c)}">
-      <div class="cat-name">${catEmoji(c)} ${esc(c)}</div><div class="cat-amt">${fmt(byCat[c])}</div>
+      <div class="cat-name">${catEmoji(c)} ${esc(c)}</div><div class="cat-amt">${fmt(byCat[c])} <span class="cat-pct">${spent > 0 ? (byCat[c] / spent * 100).toFixed(1) : '0.0'}%</span></div>
       <div class="cat-bar"><div class="cat-fill ${over ? 'over' : ''}" style="width:${max ? byCat[c] / max * 100 : 0}%;background:${catColor(c)}"></div></div>${sub}</div>`;
   }).join('') : '<div class="empty">No expenses this month yet.<br>Tap ＋ to add your first one.</div>';
 
