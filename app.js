@@ -532,15 +532,29 @@ function parseReceipt(text) {
     }
     out.date = `${ymd}T${hh}:${mm}`;
   }
-  // Title: first plausible merchant line near the top
+  // Title: first plausible merchant line near the top — this is the expense NAME
   const skip = /(receipt|invoice|tel|phone|www|http|gst|hst|pst|vat|tax|order|trans|cashier|terminal|thank)/i;
+  let merchantLine = '';
   for (const l of lines.slice(0, 6)) {
     const letters = (l.match(/[A-Za-z]/g) || []).length;
     if (letters >= 3 && !skip.test(l) && !/^\d+$/.test(l.replace(/[\s#*.-]/g, ''))) {
-      out.title = l.replace(/^[#*\s]+|[#*\s]+$/g, '').replace(/\s+/g, ' ').slice(0, 60);
+      merchantLine = l;
+      out.title = l.replace(/^[#*\s]+|[#*\s]+$/g, '').replace(/\s+#\d+.*$/, '').replace(/\s+/g, ' ').slice(0, 60);
       break;
     }
   }
+  // Description: the items bought (lines with a price, excluding totals/tax/payment lines)
+  const notItem = /(sub\s*-?\s*total|\btotal\b|hst|gst|pst|vat|\btax\b|change|cash|visa|mastercard|amex|debit|credit|balance|amount due|to pay|tip|tender|auth)/i;
+  const items = [];
+  for (const l of lines) {
+    if (l === merchantLine) continue;
+    if (notItem.test(l)) continue;
+    if (!/\d+\.\d{2}/.test(l)) continue;
+    if ((l.match(/[A-Za-z]/g) || []).length < 2) continue;
+    items.push(l.replace(/\s+/g, ' ').trim());
+    if (items.length >= 8) break;
+  }
+  if (items.length) out.note = items.join('\n').slice(0, 290);
   // Category guess from keywords anywhere on the receipt
   const low = text.toLowerCase();
   const CAT_KEYS = [
@@ -581,6 +595,7 @@ $('receiptFile').addEventListener('change', async ev => {
     const parsed = parseReceipt(data.text || '');
     if (parsed.amount) $('fAmount').value = parsed.amount.toFixed(2);
     if (parsed.title) $('fTitle').value = parsed.title;
+    if (parsed.note) $('fNote').value = parsed.note;
     if (parsed.date) $('fDate').value = parsed.date;
     if (parsed.category) $('fCategory').value = parsed.category;
     toast(parsed.amount || parsed.title ? 'Receipt scanned — check the details ✓' : 'Could not read it — enter manually');
