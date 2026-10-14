@@ -121,7 +121,7 @@ function expenseRow(e, showDate) {
   const payer = shared ? `<span class="badge">${esc(personName(e.paidBy))} paid · split ${(e.splits || []).length} ways</span>` : '';
   return `<div class="exp-row" data-edit="${e.id}">
     <div class="exp-emoji">${catEmoji(e.category)}</div>
-    <div class="exp-main"><div class="exp-title">${esc(e.title)}${payer}</div><div class="exp-meta">${meta} · ${esc(e.category)}</div></div>
+    <div class="exp-main"><div class="exp-title">${esc(e.title)}${payer}</div>${e.note ? `<div class="exp-note">${esc(e.note)}</div>` : ''}<div class="exp-meta">${meta} · ${esc(e.category)}</div></div>
     <div class="exp-amt">${fmt(e.amount)}</div></div>`;
 }
 
@@ -184,7 +184,7 @@ function renderExpenses() {
   const cf = $('categoryFilter').value || 'all';
   let list = monthExpenses(viewMonth);
   if (cf !== 'all') list = list.filter(e => e.category === cf);
-  if (q) list = list.filter(e => e.title.toLowerCase().includes(q) || e.category.toLowerCase().includes(q));
+  if (q) list = list.filter(e => e.title.toLowerCase().includes(q) || e.category.toLowerCase().includes(q) || (e.note || '').toLowerCase().includes(q));
   list = [...list].sort((a, b) => b.date.localeCompare(a.date));
   const total = round2(list.reduce((a, e) => a + e.amount, 0));
   $('expensesTotal').textContent = list.length ? `${list.length} expense${list.length === 1 ? '' : 's'} · ${fmt(total)}` : '';
@@ -263,6 +263,7 @@ function openSheet(expense) {
   $('deleteBtn').classList.toggle('hidden', !expense);
   $('fAmount').value = expense ? expense.amount : '';
   $('fTitle').value = expense ? expense.title : '';
+  $('fNote').value = expense ? (expense.note || '') : '';
   $('fCategory').value = expense ? expense.category : 'Groceries';
   $('fDate').value = expense ? expense.date.slice(0, 16) : localNowValue();
   $('fPaidBy').innerHTML = state.people.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
@@ -317,7 +318,7 @@ $('expenseForm').addEventListener('submit', ev => {
       splits = boxes.map((b, i) => ({ personId: b.dataset.splitPerson, share: i === 0 ? round2(amount - base * (boxes.length - 1)) : base }));
     }
   }
-  const data = { title, amount, category: $('fCategory').value, date: $('fDate').value, paidBy, splits };
+  const data = { title, amount, category: $('fCategory').value, date: $('fDate').value, paidBy, splits, note: $('fNote').value.trim() };
   if (editingId) {
     const e = state.expenses.find(x => x.id === editingId);
     Object.assign(e, data);
