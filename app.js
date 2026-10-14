@@ -126,7 +126,13 @@ function expenseRow(e, showDate) {
 }
 
 function render() {
-  $('monthLabel').textContent = monthLabel(viewMonth);
+  const ms = $('monthSelect'), ys = $('yearSelect');
+  if (ms) ms.value = viewMonth.slice(5, 7);
+  if (ys) {
+    const y = viewMonth.slice(0, 4);
+    if (![...ys.options].some(o => o.value === y)) ys.add(new Option(y, y));
+    ys.value = y;
+  }
   renderSummary(); renderExpenses(); renderSplit(); renderBudget();
 }
 
@@ -459,5 +465,17 @@ $('importFile').addEventListener('change', ev => {
 });
 
 /* ---------- init ---------- */
+(function initMonthYear() {
+  const ms = $('monthSelect'), ys = $('yearSelect');
+  ms.innerHTML = MONTHS.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m.slice(0, 3)}</option>`).join('');
+  const years = new Set();
+  for (let y = 2024; y <= 2030; y++) years.add(String(y));
+  state.expenses.forEach(e => years.add(e.date.slice(0, 4)));
+  years.add(viewMonth.slice(0, 4));
+  ys.innerHTML = [...years].sort().map(y => `<option value="${y}">${y}</option>`).join('');
+  const jump = () => { viewMonth = ys.value + '-' + ms.value; render(); };
+  ms.addEventListener('change', jump);
+  ys.addEventListener('change', jump);
+})();
 fillCategorySelects();
 render();
