@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b7a4b">
 <title>Budget &amp; Bill Splitter</title>
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
 </head>
 <body>
@@ -159,6 +159,13 @@
   <div class="sheet-handle"></div>
   <h2 id="sheetTitle">Add expense</h2>
   <form id="expenseForm">
+    <button type="button" id="scanBtn" class="scan-btn">📷 Scan receipt photo</button>
+    <input type="file" id="receiptFile" accept="image/*" hidden>
+    <div id="scanStatus" class="scan-status hidden">
+      <div class="scan-track"><div class="scan-fill" id="scanBar"></div></div>
+      <div id="scanLabel" class="scan-label">Reading receipt…</div>
+    </div>
+    <p class="hint scan-hint">The photo is read on your phone only — it is never uploaded or stored.</p>
     <div class="segmented">
       <button type="button" id="modePersonal" class="seg active">Personal</button>
       <button type="button" id="modeSplit" class="seg">Split</button>
@@ -185,6 +192,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

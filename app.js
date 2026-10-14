@@ -465,6 +465,115 @@ $('importFile').addEventListener('change', ev => {
   ev.target.value = '';
 });
 
+/* ---------- receipt scanning (on-device OCR, photo is never stored) ---------- */
+function loadTesseract() {
+  return new Promise((resolve, reject) => {
+    if (window.Tesseract) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+function receiptAmounts(line) {
+  const m = line.replace(/,/g, '').match(/\$?\s*(\d+\.\d{2})\b/g);
+  return m ? m.map(x => parseFloat(x.replace(/[$\s]/g, ''))).filter(n => isFinite(n)) : [];
+}
+function parseReceipt(text) {
+  const out = {};
+  const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
+  // Amount: prefer a TOTAL line (not subtotal), then amount/balance due, then the largest figure
+  let amount = null;
+  for (const l of lines.filter(l => /total/i.test(l) && !/sub\s*-?\s*total/i.test(l))) {
+    const v = receiptAmounts(l); if (v.length) amount = Math.max(...v);
+  }
+  if (!amount) for (const l of lines.filter(l => /(amount due|balance due|total due|to pay)/i.test(l))) {
+    const v = receiptAmounts(l); if (v.length) amount = Math.max(...v);
+  }
+  if (!amount) { let max = 0; lines.forEach(l => receiptAmounts(l).forEach(v => { if (v > max) max = v; })); amount = max || null; }
+  if (amount) out.amount = round2(amount);
+  // Date
+  const p2 = n => String(n).padStart(2, '0');
+  let ymd = null;
+  let m = text.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (m) ymd = `${m[1]}-${p2(m[2])}-${p2(m[3])}`;
+  if (!ymd) { m = text.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})\b/); if (m) ymd = `${m[3]}-${p2(m[1])}-${p2(m[2])}`; }
+  if (!ymd) { m = text.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{2})\b/); if (m) ymd = `20${m[3]}-${p2(m[1])}-${p2(m[2])}`; }
+  if (!ymd) {
+    const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+    m = text.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i);
+    if (m) ymd = `${m[3]}-${p2(MON[m[1].toLowerCase()])}-${p2(m[2])}`;
+    if (!ymd) { m = text.match(/(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(\d{4})/i); if (m) ymd = `${m[3]}-${p2(MON[m[2].toLowerCase()])}-${p2(m[1])}`; }
+  }
+  if (ymd) {
+    let hh = '12', mm = '00';
+    const tm = text.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?\b/);
+    if (tm) {
+      let h = parseInt(tm[1]);
+      if (tm[3]) { const pm = /pm/i.test(tm[3]); if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; }
+      if (h <= 23) { hh = p2(h); mm = tm[2]; }
+    }
+    out.date = `${ymd}T${hh}:${mm}`;
+  }
+  // Title: first plausible merchant line near the top
+  const skip = /(receipt|invoice|tel|phone|www|http|gst|hst|pst|vat|tax|order|trans|cashier|terminal|thank)/i;
+  for (const l of lines.slice(0, 6)) {
+    const letters = (l.match(/[A-Za-z]/g) || []).length;
+    if (letters >= 3 && !skip.test(l) && !/^\d+$/.test(l.replace(/[\s#*.-]/g, ''))) {
+      out.title = l.replace(/^[#*\s]+|[#*\s]+$/g, '').replace(/\s+/g, ' ').slice(0, 60);
+      break;
+    }
+  }
+  // Category guess from keywords anywhere on the receipt
+  const low = text.toLowerCase();
+  const CAT_KEYS = [
+    ['Personal Care', ['shoppers drug', 'pharmaprix', 'rexall', 'sephora', 'salon', 'barber']],
+    ['Groceries', ['walmart', 'costco', 'food basics', 'iqbal', 'loblaws', 'no frills', 'freshco', 'metro ', 'sobeys', 'superstore', 'grocery', 'groceries', 'supermarket', 'whole foods', 'farm boy', 'zehrs', 'fortinos', 'foodland', 't&t supermarket']],
+    ['Dining Out', ['tim hortons', 'starbucks', 'mcdonald', 'lindt', 'restaurant', 'cafe', 'café', 'pizza', 'burger', 'subway', 'kfc', "wendy", 'dairy queen', 'bakery', 'coffee']],
+    ['Transport', ['petro-canada', 'shell', 'esso', 'parking', 'uber', 'lyft', '407 etr', 'gas station']],
+    ['Entertainment', ['cineplex', 'netflix', 'spotify', 'cinema', 'theatre']],
+    ['Health', ['pharmacy', 'clinic', 'dental', 'medical', 'optical']],
+    ['Housing', ['home depot', 'ikea', 'rona', "lowe's", 'bed bath']],
+    ['Utilities & Bills', ['bell canada', 'rogers', 'telus', 'fido', 'koodo', 'hydro', 'enbridge']],
+    ['Shopping', ['amazon', 'best buy', 'winners', 'marshalls', 'dollarama', 'canadian tire', 'nike', 'zara']]
+  ];
+  for (const [cat, keys] of CAT_KEYS) if (keys.some(k => low.includes(k))) { out.category = cat; break; }
+  return out;
+}
+$('scanBtn').addEventListener('click', () => $('receiptFile').click());
+$('receiptFile').addEventListener('change', async ev => {
+  const file = ev.target.files[0];
+  ev.target.value = '';
+  if (!file) return;
+  const status = $('scanStatus'), bar = $('scanBar'), label = $('scanLabel');
+  status.classList.remove('hidden');
+  bar.style.width = '4%';
+  label.textContent = 'Loading scanner…';
+  try {
+    await loadTesseract();
+    label.textContent = 'Reading receipt…';
+    const { data } = await Tesseract.recognize(file, 'eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const p = Math.max(5, Math.round(m.progress * 100));
+          bar.style.width = p + '%';
+          label.textContent = 'Reading receipt… ' + p + '%';
+        }
+      }
+    });
+    const parsed = parseReceipt(data.text || '');
+    if (parsed.amount) $('fAmount').value = parsed.amount.toFixed(2);
+    if (parsed.title) $('fTitle').value = parsed.title;
+    if (parsed.date) $('fDate').value = parsed.date;
+    if (parsed.category) $('fCategory').value = parsed.category;
+    toast(parsed.amount || parsed.title ? 'Receipt scanned — check the details ✓' : 'Could not read it — enter manually');
+  } catch (e) {
+    toast('Scanning failed — check connection and retry');
+  }
+  status.classList.add('hidden');
+});
+
 /* ---------- init ---------- */
 (function initMonthYear() {
   const ms = $('monthSelect'), ys = $('yearSelect');

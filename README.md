@@ -11,6 +11,7 @@ A mobile-friendly web app for **splitting bills** and **tracking a monthly budge
 - **Split / Balances** — add people, split expenses equally or by custom amounts, netted balances, one-tap settle-up
 - **Budget** — monthly budget, per-category limits with over-budget warnings, recurring bills
 - **Backup** — export/import everything as one JSON file (store it in Google Drive to move between devices)
+- **Receipt scanning** — in Add Expense, tap “Scan receipt photo”: the receipt is read on the device itself (OCR) and fills in amount, date, store name, and a category guess. The photo is never uploaded or stored.
 
 ## How data works
 
