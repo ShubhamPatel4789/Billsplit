@@ -64,6 +64,8 @@ h2{font-size:16px;margin:0 0 12px}
 .exp-meta{color:var(--muted);font-size:12.5px;margin-top:1px}
 .exp-note{color:var(--muted);font-size:12.5px;margin-top:1px;overflow-wrap:anywhere;white-space:pre-line}
 .exp-amt{font-weight:800;font-size:15px;white-space:nowrap}
+.exp-dupe{flex:none;width:32px;height:32px;border:1.5px solid var(--border);border-radius:9px;background:transparent;color:var(--muted);font-size:15px;cursor:pointer;line-height:1}
+.exp-dupe:active{background:var(--border);color:var(--text)}
 .badge{display:inline-block;background:#e5f3ec;color:var(--green-dark);font-size:11px;font-weight:700;border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:1px}
 .empty{color:var(--muted);text-align:center;padding:18px 6px;font-size:14px}
 

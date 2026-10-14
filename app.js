@@ -193,7 +193,7 @@ function expenseRow(e, showDate) {
   return `<div class="exp-row" data-edit="${e.id}">
     <div class="exp-emoji" style="background:${catColor(e.category)}26">${catEmoji(e.category)}</div>
     <div class="exp-main"><div class="exp-title">${esc(e.title)}${payer}</div>${e.note ? `<div class="exp-note">${esc(e.note)}</div>` : ''}<div class="exp-meta">${meta} · ${esc(e.category)}</div></div>
-    <div class="exp-amt">${fmt(e.amount)}</div></div>`;
+    <div class="exp-amt">${fmt(e.amount)}</div><button type="button" class="exp-dupe" data-duplicate="${e.id}" title="Duplicate this expense" aria-label="Duplicate this expense">⧉</button></div>`;
 }
 
 function render() {
@@ -327,7 +327,7 @@ function addRecurringForMonth(bill, key) {
 })();
 
 /* ---------- sheet (add / edit) ---------- */
-let editingId = null, sheetMode = 'personal', customShares = false;
+let editingId = null, sheetMode = 'personal', customShares = false, duplicating = false;
 function fillCategorySelects() {
   const opts = CATEGORIES.map(c => `<option value="${esc(c.name)}">${c.emoji} ${esc(c.name)}</option>`).join('');
   $('fCategory').innerHTML = opts;
@@ -338,10 +338,11 @@ function localNowValue() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-function openSheet(expense) {
-  editingId = expense ? expense.id : null;
-  $('sheetTitle').textContent = expense ? 'Edit expense' : 'Add expense';
-  $('deleteBtn').classList.toggle('hidden', !expense);
+function openSheet(expense, asDuplicate) {
+  duplicating = !!asDuplicate;
+  editingId = expense && !asDuplicate ? expense.id : null;
+  $('sheetTitle').textContent = asDuplicate ? 'Duplicate expense' : (expense ? 'Edit expense' : 'Add expense');
+  $('deleteBtn').classList.toggle('hidden', !editingId);
   $('fAmount').value = expense ? expense.amount : '';
   $('fTitle').value = expense ? expense.title : '';
   $('fNote').value = expense ? (expense.note || '') : '';
@@ -406,7 +407,7 @@ $('expenseForm').addEventListener('submit', ev => {
     toast('Expense updated ✓');
   } else {
     state.expenses.push({ id: uid(), ...data });
-    toast('Expense added ✓');
+    toast(duplicating ? 'Expense duplicated ✓' : 'Expense added ✓');
   }
   save(); closeSheet(); render();
 });
@@ -437,6 +438,8 @@ document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', (
 $('prevMonth').addEventListener('click', () => { viewMonth = shiftMonth(viewMonth, -1); render(); });
 $('nextMonth').addEventListener('click', () => { viewMonth = shiftMonth(viewMonth, 1); render(); });
 document.addEventListener('click', ev => {
+  const dupeBtn = ev.target.closest('[data-duplicate]');
+  if (dupeBtn) { const src = state.expenses.find(e => e.id === dupeBtn.dataset.duplicate); if (src) openSheet(src, true); return; }
   const editRow = ev.target.closest('[data-edit]');
   if (editRow) { openSheet(state.expenses.find(e => e.id === editRow.dataset.edit)); return; }
   const gocat = ev.target.closest('[data-gocat]');
