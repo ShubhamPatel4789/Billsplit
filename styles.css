@@ -20,7 +20,7 @@ h2{font-size:16px;margin:0 0 12px}
 .month-nav{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px;box-shadow:var(--shadow)}
 .month-nav button{width:34px;height:34px;border-radius:50%;font-size:20px;line-height:1;background:var(--bg)}
 .month-nav button:active{background:var(--border)}
-.month-label{font-weight:700;min-width:132px;text-align:center;font-size:15px}
+.month-nav select{width:auto;border:none;background:transparent;font-weight:700;font-size:15px;padding:6px 2px;text-align:center;color:var(--text)}
 
 .view{display:none}
 .view.active{display:block;animation:fade .22s ease}
@@ -152,3 +152,15 @@ h2{font-size:16px;margin:0 0 12px}
   .grid{grid-template-columns:1fr 1fr}
   .bottom-nav,.fab{display:none}
 }
+
+/* --- overflow guards: content must never stretch the page sideways --- */
+html,body{max-width:100%}
+.main,.grid,.card,.cat-row,.rec-row,.balance-row,.exp-row,.split-person{min-width:0}
+.exp-main,.rec-main{min-width:0}
+.exp-title{overflow-wrap:anywhere}
+.balance-row span,.person-chip{overflow-wrap:anywhere;min-width:0}
+.person-chip{max-width:100%}
+.filters input,.filters select,.inline-form input,.row>*{min-width:0}
+.cat-budget-row{grid-template-columns:minmax(0,1fr) 110px}
+.toast{max-width:92vw;white-space:normal;text-align:center}
+.month-nav{max-width:100%}
