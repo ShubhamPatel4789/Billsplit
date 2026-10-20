@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b7a4b">
 <title>Budget &amp; Bill Splitter</title>
-<link rel="stylesheet" href="styles.css?v=11">
+<script>(function(){try{var c=localStorage.getItem('billsplit.theme')||'system';var d=c==='dark'||(c==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
+<link rel="stylesheet" href="styles.css?v=12">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
 </head>
 <body>
@@ -19,6 +20,12 @@
       <button data-tab="budget" class="nav-btn"><span>🎯</span>Budget</button>
     </nav>
     <button class="add-btn side-add" id="addBtnSide">＋ Add expense</button>
+    <div class="seg-label">Appearance</div>
+    <div class="segmented theme-seg" role="group" aria-label="Theme">
+      <button type="button" class="seg" data-theme-choice="system">System</button>
+      <button type="button" class="seg" data-theme-choice="light">Light</button>
+      <button type="button" class="seg" data-theme-choice="dark">Dark</button>
+    </div>
     <div class="side-foot">Data is saved on this device.<br>Use Export in Budget to back up to Google Drive.</div>
   </aside>
 
@@ -132,7 +139,14 @@
           </form>
         </div>
         <div class="card">
-          <h2>Data backup</h2>
+          <h2>Appearance</h2>
+          <div class="segmented theme-seg" role="group" aria-label="Theme">
+            <button type="button" class="seg" data-theme-choice="system">System</button>
+            <button type="button" class="seg" data-theme-choice="light">Light</button>
+            <button type="button" class="seg" data-theme-choice="dark">Dark</button>
+          </div>
+          <p class="hint">System follows your device's light/dark setting. Your choice is kept on this device only.</p>
+          <h2 class="mt">Data backup</h2>
           <p class="hint" id="syncStatus">☁️ Cloud sync: connecting…</p>
           <p class="hint">Export saves everything as one JSON file — store it in the “Budget and Bill Splitter” folder in Google Drive. Import restores it on any device.</p>
           <div class="row">
@@ -195,6 +209,6 @@
 <div class="toast" id="toast"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>
