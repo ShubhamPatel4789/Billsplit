@@ -689,3 +689,20 @@ $('receiptFile').addEventListener('change', async ev => {
 fillCategorySelects();
 render();
 initSync();
+
+// ---------- theme: system default + manual override, per device ----------
+const THEME_KEY = 'billsplit.theme';
+const themeMQ = window.matchMedia('(prefers-color-scheme: dark)');
+function themeChoice(){ try { return localStorage.getItem(THEME_KEY) || 'system'; } catch (e) { return 'system'; } }
+function applyTheme(){
+  const c = themeChoice();
+  const dark = c === 'dark' || (c === 'system' && themeMQ.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.querySelectorAll('.theme-seg .seg').forEach(b => b.classList.toggle('active', b.dataset.themeChoice === c));
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#101613' : '#0b7a4b');
+}
+function setTheme(c){ try { localStorage.setItem(THEME_KEY, c); } catch (e) {} applyTheme(); }
+document.querySelectorAll('.theme-seg .seg').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.themeChoice)));
+if (themeMQ.addEventListener) themeMQ.addEventListener('change', applyTheme);
+applyTheme();
