@@ -309,3 +309,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0
 .view > .card + .grid,
 .view > .grid + .card,
 .view > .grid + .grid{margin-top:16px}
+
+/* --- v19: header on one line on phones --- */
+/* The full title + month pill don't fit side by side on a phone, so phones
+   show the short "Billsplit" name next to the pill; the full name stays on
+   wider screens and in the sidebar. */
+.brand-short{display:none}
+@media (max-width:560px){
+  .topbar{flex-wrap:nowrap}
+  .brand-full{display:none}
+  .brand-short{display:inline}
+  .mobile-brand{white-space:nowrap;flex:1 1 auto;min-width:0}
+  .month-nav{flex:0 0 auto}
+}
