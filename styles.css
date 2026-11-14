@@ -243,3 +243,63 @@ body[data-tab="split"] .month-nav{display:none}
 
 .rename-input{flex:1;min-width:0}
 .danger-armed{background:var(--danger);color:#fff;font-weight:700;border-radius:9px;width:auto;padding:0 12px;font-size:13px;white-space:nowrap}
+
+/* --- v16 visual polish: softer, smoother, fancier --- */
+html{scroll-behavior:smooth}
+body{background:linear-gradient(180deg,#f1f8f3 0%,var(--bg) 200px)}
+:root[data-theme="dark"] body{background:linear-gradient(180deg,#131a15 0%,var(--bg) 200px)}
+body,.card,.sidebar,.bottom-nav,.sheet{transition:background-color .25s ease,border-color .25s ease}
+::selection{background:#bfe6d2;color:#0b3d26}
+:root[data-theme="dark"] ::selection{background:#1d4d33;color:#d8f5e4}
+
+.card{border-radius:20px;box-shadow:0 1px 2px rgba(20,40,30,.05),0 10px 28px rgba(20,40,30,.07)}
+.ring-card{background:linear-gradient(180deg,var(--card),var(--tint-soft))}
+.stat-value,.exp-amt{font-variant-numeric:tabular-nums}
+.ring{filter:drop-shadow(0 4px 10px rgba(11,122,75,.18))}
+
+.month-nav{box-shadow:0 4px 14px rgba(20,40,30,.10)}
+input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(11,122,75,.16)}
+
+.primary,.inline-form button,.stack-form button,.add-btn{background:linear-gradient(135deg,#0e9e5e,#0b7a4b);box-shadow:0 6px 16px rgba(11,122,75,.30);transition:transform .12s ease,box-shadow .2s ease,filter .2s ease}
+.primary:active,.inline-form button:active,.stack-form button:active,.add-btn:active{transform:scale(.97);box-shadow:0 3px 8px rgba(11,122,75,.28)}
+.secondary{transition:transform .12s ease,background-color .2s ease}
+.secondary:active{transform:scale(.97)}
+.fab{background:linear-gradient(135deg,#0e9e5e,#095f3a);box-shadow:0 12px 26px rgba(11,122,75,.45);transition:transform .15s ease,box-shadow .2s ease}
+.fab:active{transform:scale(.9)}
+
+.view.active{animation:fade .3s cubic-bezier(.22,.8,.32,1)}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.bottom-nav{padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+.bottom-nav .nav-btn{border-radius:14px;padding:8px 0 6px;transition:background-color .2s ease,color .2s ease,transform .12s ease}
+.bottom-nav .nav-btn:active{transform:scale(.94)}
+.bottom-nav .nav-btn.active{background:var(--tint)}
+.side-nav .nav-btn{transition:background-color .2s ease,color .2s ease}
+.side-nav .nav-btn.active{box-shadow:inset 3px 0 0 var(--accent)}
+
+.seg{transition:background-color .2s ease,color .2s ease,box-shadow .2s ease}
+.seg.active{box-shadow:0 2px 8px rgba(20,40,30,.12)}
+.seg:active{transform:scale(.96)}
+
+.list-chip{transition:transform .12s ease,box-shadow .2s ease,background-color .2s ease,color .2s ease,border-color .2s ease}
+.list-chip:active{transform:scale(.95)}
+.list-chip.active{background:linear-gradient(135deg,#0e9e5e,#0b7a4b);color:#fff;border-color:transparent;box-shadow:0 6px 14px rgba(11,122,75,.32)}
+.list-chip.active .chip-count{background:rgba(255,255,255,.22);color:#fff}
+.recent-chip{transition:transform .12s ease,background-color .2s ease}
+.recent-chip:active{transform:scale(.94)}
+.settle-btn,.rec-add{transition:transform .12s ease}
+.settle-btn:active,.rec-add:active{transform:scale(.94)}
+.danger-armed{box-shadow:0 4px 10px rgba(192,57,43,.35)}
+
+.exp-row,.list-item,.rec-row,.balance-row,.cat-row{transition:background-color .15s ease}
+@media (hover:hover){
+  .exp-row:hover,.list-item:hover,.rec-row:hover{background:var(--tint-soft);border-radius:12px}
+  .card:hover{box-shadow:0 2px 4px rgba(20,40,30,.05),0 14px 34px rgba(20,40,30,.10)}
+}
+.list-item input[type=checkbox],.split-person input[type=checkbox]{cursor:pointer}
+.exp-dupe,.list-del,.rec-del,.list-mini{transition:transform .12s ease,background-color .2s ease,color .2s ease}
+.exp-dupe:active,.list-del:active,.rec-del:active,.list-mini:active{transform:scale(.88)}
+.sheet{box-shadow:0 -14px 44px rgba(10,20,15,.25)}
+.toast{box-shadow:0 10px 26px rgba(10,20,15,.35);border-radius:14px}
+.scan-btn{transition:transform .12s ease}
+.scan-btn:active{transform:scale(.98)}
