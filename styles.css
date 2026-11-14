@@ -303,3 +303,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0
 .toast{box-shadow:0 10px 26px rgba(10,20,15,.35);border-radius:14px}
 .scan-btn{transition:transform .12s ease}
 .scan-btn:active{transform:scale(.98)}
+
+/* --- v17: breathing room between stacked sections --- */
+.view > .card + .card,
+.view > .card + .grid,
+.view > .grid + .card,
+.view > .grid + .grid{margin-top:16px}
