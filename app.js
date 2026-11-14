@@ -66,21 +66,16 @@ function pushNow() {
   lastPushed = payload;
   houseRef.set({ state: payload, updatedAt: new Date().toISOString() }).catch(e => console.warn('Cloud push failed', e));
 }
-function adoptRemote(remote, isFirst) {
+function adoptRemote(remote) {
   try {
     const parsed = JSON.parse(remote);
     if (!parsed || !Array.isArray(parsed.expenses) || !Array.isArray(parsed.people)) return;
     state = parsed;
     ensureLists();
     try { localStorage.setItem(LS_KEY, remote); } catch (e) {}
-    const months = [...new Set(state.expenses.map(e => monthKey(e.date)))].sort();
-    // On the first cloud sync this session, the on-device copy may be stale
-    // (e.g. an old month) — jump to the newest month the cloud knows.
-    if (isFirst) {
-      if (months.length) viewMonth = months[months.length - 1];
-    } else if (!months.includes(viewMonth)) {
-      viewMonth = months.length ? months[months.length - 1] : nowMonthKey();
-    }
+    // viewMonth is deliberately left alone here: the app opens on the
+    // current month, and a cloud sync must never drag it back to whatever
+    // month the on-device copy happened to hold.
     render();
   } catch (e) { console.warn('Could not apply cloud data', e); }
 }
@@ -103,7 +98,7 @@ function initSync() {
           if ((state.expenses || []).length > (rp.expenses || []).length) { pushNow(); return; }
         } catch (e) {}
       }
-      adoptRemote(remote, wasFirst);
+      adoptRemote(remote);
       if (pendingPush) { pendingPush = false; pushNow(); }
     }, err => {
       console.warn('Cloud sync error', err);
@@ -220,10 +215,10 @@ try {
 } catch (e) { state = seedState(); }
 function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
 
-let viewMonth = (() => {
-  const months = [...new Set(state.expenses.map(e => monthKey(e.date)))].sort();
-  return months.length ? months[months.length - 1] : nowMonthKey();
-})();
+// The app always opens on the current month. It used to open on the newest
+// month found in the saved data, which is why a stale on-device copy could
+// land on last month (October) even though today is mid-November.
+let viewMonth = nowMonthKey();
 let activeTab = 'summary';
 
 /* ---------- balances ---------- */
