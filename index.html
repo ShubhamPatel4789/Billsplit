@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b7a4b">
 <title>Budget &amp; Bill Splitter</title>
 <script>(function(){try{var c=localStorage.getItem('billsplit.theme')||'system';var d=c==='dark'||(c==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
-<link rel="stylesheet" href="styles.css?v=14">
+<link rel="stylesheet" href="styles.css?v=15">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
 </head>
 <body>
@@ -161,7 +161,17 @@
     <!-- LISTS -->
     <section id="view-lists" class="view">
       <div class="card">
+        <h2>Your lists</h2>
         <div class="list-picker" id="listPicker"></div>
+        <div id="allLists"></div>
+        <form id="addListForm" class="inline-form">
+          <input type="text" id="newListName" placeholder="Shop name, e.g. Walmart" maxlength="40" required>
+          <button type="submit">Add shop list</button>
+        </form>
+        <button type="button" id="addGeneralBtn" class="secondary" style="margin-top:10px">＋ Add General list</button>
+        <p class="hint" style="margin-top:12px">Lists sync live to every phone with this app, just like expenses — and they are included in the JSON backup.</p>
+      </div>
+      <div class="card">
         <div class="list-head">
           <h2 id="activeListName">Lists</h2>
           <div class="list-count" id="activeListCount"></div>
@@ -193,16 +203,6 @@
           <button type="button" id="uncheckAllBtn" class="secondary">↩ Uncheck all</button>
           <button type="button" id="clearDoneBtn" class="secondary">🧹 Clear done</button>
         </div>
-      </div>
-      <div class="card">
-        <h2>Your lists</h2>
-        <div id="allLists"></div>
-        <form id="addListForm" class="inline-form">
-          <input type="text" id="newListName" placeholder="Shop name, e.g. Walmart" maxlength="40" required>
-          <button type="submit">Add shop list</button>
-        </form>
-        <button type="button" id="addGeneralBtn" class="secondary" style="margin-top:10px">＋ Add General list</button>
-        <p class="hint" style="margin-top:12px">Lists sync live to every phone with this app, just like expenses — and they are included in the JSON backup.</p>
       </div>
     </section>
   </main>
@@ -259,6 +259,6 @@
 <div class="toast" id="toast"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>
