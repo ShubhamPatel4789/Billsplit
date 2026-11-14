@@ -66,7 +66,7 @@ function pushNow() {
   lastPushed = payload;
   houseRef.set({ state: payload, updatedAt: new Date().toISOString() }).catch(e => console.warn('Cloud push failed', e));
 }
-function adoptRemote(remote) {
+function adoptRemote(remote, isFirst) {
   try {
     const parsed = JSON.parse(remote);
     if (!parsed || !Array.isArray(parsed.expenses) || !Array.isArray(parsed.people)) return;
@@ -74,7 +74,13 @@ function adoptRemote(remote) {
     ensureLists();
     try { localStorage.setItem(LS_KEY, remote); } catch (e) {}
     const months = [...new Set(state.expenses.map(e => monthKey(e.date)))].sort();
-    if (!months.includes(viewMonth)) viewMonth = months.length ? months[months.length - 1] : nowMonthKey();
+    // On the first cloud sync this session, the on-device copy may be stale
+    // (e.g. an old month) — jump to the newest month the cloud knows.
+    if (isFirst) {
+      if (months.length) viewMonth = months[months.length - 1];
+    } else if (!months.includes(viewMonth)) {
+      viewMonth = months.length ? months[months.length - 1] : nowMonthKey();
+    }
     render();
   } catch (e) { console.warn('Could not apply cloud data', e); }
 }
@@ -97,7 +103,7 @@ function initSync() {
           if ((state.expenses || []).length > (rp.expenses || []).length) { pushNow(); return; }
         } catch (e) {}
       }
-      adoptRemote(remote);
+      adoptRemote(remote, wasFirst);
       if (pendingPush) { pendingPush = false; pushNow(); }
     }, err => {
       console.warn('Cloud sync error', err);
@@ -111,31 +117,45 @@ function initSync() {
 
 /* ---------- shared lists (groceries, errands, anything) ---------- */
 const LIST_KINDS = {
-  shopping: { emoji: '🛒', label: 'Shopping' },
-  errands: { emoji: '🚗', label: 'Errands' },
+  shop: { emoji: '🛒', label: 'Shop' },
   general: { emoji: '📋', label: 'General' }
 };
 const LIST_CATS = {
-  shopping: ['General', 'Produce', 'Dairy & Eggs', 'Bakery', 'Pantry', 'Frozen', 'Household', 'Other'],
-  errands: ['General', 'Car', 'Home', 'Documents', 'Shopping', 'Health', 'Other'],
+  shop: ['General', 'Produce', 'Dairy & Eggs', 'Bakery', 'Pantry', 'Frozen', 'Household', 'Other'],
   general: ['General', 'Home', 'Work', 'Shopping', 'Other']
 };
 const listEmoji = l => (LIST_KINDS[l.kind] || LIST_KINDS.general).emoji;
 const listCats = l => LIST_CATS[l.kind] || LIST_CATS.general;
 const ACTIVE_LIST_KEY = 'billsplit.activeList';
 let activeListId = null;
+let renamingListId = null, confirmDeleteListId = null, confirmDeleteTimer = null;
 try { activeListId = localStorage.getItem(ACTIVE_LIST_KEY); } catch (e) {}
 function ensureLists() {
   if (!Array.isArray(state.lists)) state.lists = [];
+  // Migrate the v13 starter lists to the shop-based model: "Groceries" and
+  // "Car errands" fold into the General list, keeping their items.
+  const olds = state.lists.filter(l => l.name === 'Groceries' || l.name === 'Car errands');
+  if (olds.length) {
+    let general = state.lists.find(l => l.kind === 'general' && l.name === 'General');
+    if (!general) {
+      general = { id: uid(), name: 'General', kind: 'general', items: [] };
+      state.lists.unshift(general);
+    }
+    olds.forEach(o => {
+      if (o === general) return;
+      general.items = [...(general.items || []), ...(o.items || [])];
+      state.lists = state.lists.filter(l => l !== o);
+    });
+  }
   state.lists.forEach(l => {
     if (!Array.isArray(l.items)) l.items = [];
-    if (!l.kind) l.kind = 'general';
-    l.items.forEach(it => { if (it.done == null) it.done = false; if (!it.cat) it.cat = 'General'; });
+    if (l.kind !== 'shop' && l.kind !== 'general') l.kind = 'general';
+    l.items.forEach(it => { if (it.done == null) it.done = false; if (!it.cat) it.cat = 'General'; if (it.shop == null) it.shop = ''; });
   });
   if (!state.lists.length) {
     state.lists = [
-      { id: uid(), name: 'Groceries', kind: 'shopping', items: [] },
-      { id: uid(), name: 'Car errands', kind: 'errands', items: [] }
+      { id: uid(), name: 'General', kind: 'general', items: [] },
+      { id: uid(), name: 'Walmart', kind: 'shop', items: [] }
     ];
   }
 }
@@ -147,6 +167,8 @@ function activeList() {
 }
 function setActiveList(id) {
   activeListId = id;
+  confirmDeleteListId = null;
+  renamingListId = null;
   try { localStorage.setItem(ACTIVE_LIST_KEY, id); } catch (e) {}
   renderLists();
 }
@@ -183,8 +205,8 @@ function seedState() {
     recurring: [],
     settlements: [],
     lists: [
-      { id: uid(), name: 'Groceries', kind: 'shopping', items: [] },
-      { id: uid(), name: 'Car errands', kind: 'errands', items: [] }
+      { id: uid(), name: 'General', kind: 'general', items: [] },
+      { id: uid(), name: 'Walmart', kind: 'shop', items: [] }
     ]
   };
 }
@@ -368,8 +390,11 @@ function renderBudget() {
 }
 
 /* ---------- lists tab ---------- */
-function listItemMeta(it) {
+function listItemMeta(it, list) {
   const parts = [];
+  // A shop list already says where its items come from — only show a shop
+  // when it differs from the list itself (mainly the General list).
+  if (it.shop && (!list || it.shop !== list.name)) parts.push('🛒 ' + esc(it.shop));
   if (it.cat && it.cat !== 'General') parts.push(esc(it.cat));
   if (it.who) parts.push('👤 ' + esc(personName(it.who)));
   if (it.due) {
@@ -381,12 +406,12 @@ function listItemMeta(it) {
   if (it.note) parts.push(esc(it.note));
   return parts.join(' · ');
 }
-function listItemRow(it) {
+function listItemRow(it, list) {
   return `<div class="list-item ${it.done ? 'done' : ''}">
     <input type="checkbox" data-toggle-item="${it.id}" ${it.done ? 'checked' : ''} aria-label="Mark ${esc(it.text)} as ${it.done ? 'not done' : 'done'}">
     <div class="list-item-main">
       <div class="list-item-text">${esc(it.text)}${it.qty ? ` <span class="qty">${esc(it.qty)}</span>` : ''}</div>
-      ${listItemMeta(it) ? `<div class="list-item-meta">${listItemMeta(it)}</div>` : ''}
+      ${listItemMeta(it, list) ? `<div class="list-item-meta">${listItemMeta(it, list)}</div>` : ''}
     </div>
     <button type="button" class="list-del" data-del-item="${it.id}" aria-label="Delete ${esc(it.text)}">×</button>
   </div>`;
@@ -422,6 +447,12 @@ function renderLists() {
   $('newItemCategory').innerHTML = listCats(l).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
   $('newItemAssignee').innerHTML = '<option value="">Anyone</option>' +
     state.people.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  // In a shop list the shop is the list itself, so no per-item shop field;
+  // in General it stays, for items that do belong to a shop.
+  $('newItemShop').classList.toggle('hidden', l.kind === 'shop');
+  $('addGeneralBtn').classList.toggle('hidden', state.lists.some(x => x.kind === 'general'));
+  const shops = [...new Set(state.lists.flatMap(x => x.items.map(i => (i.shop || '').trim())).filter(Boolean))].sort();
+  $('shopSuggestions').innerHTML = shops.map(s => `<option value="${esc(s)}">`).join('');
   const recent = recentItems();
   $('recentChips').innerHTML = recent.length
     ? '<span class="chip-label">Add again</span>' + recent.map(it =>
@@ -435,20 +466,28 @@ function renderLists() {
     const items = pending.filter(i => (i.cat || 'General') === c);
     if (!items.length) return;
     if (showHeaders && c !== 'General') html += `<div class="list-cat">${esc(c)}</div>`;
-    html += items.map(listItemRow).join('');
+    html += items.map(it => listItemRow(it, l)).join('');
   });
   if (!pending.length) html += '<div class="empty">Nothing to do — add your first item above.</div>';
   if (done.length) {
-    html += `<div class="done-head">Done (${done.length})</div>` + done.map(listItemRow).join('');
+    html += `<div class="done-head">Done (${done.length})</div>` + done.map(it => listItemRow(it, l)).join('');
   }
   $('listItems').innerHTML = html;
   $('allLists').innerHTML = state.lists.map(x => {
     const p = x.items.filter(i => !i.done).length;
     const d = x.items.filter(i => i.done).length;
+    if (renamingListId === x.id) {
+      return `<div class="list-manage-row">
+        <input type="text" class="rename-input" data-rename-input="${x.id}" value="${esc(x.name)}" maxlength="40" aria-label="Rename list">
+        <button type="button" class="list-mini" data-rename-save="${x.id}" aria-label="Save new name">✓</button>
+        <button type="button" class="list-mini" data-rename-cancel="${x.id}" aria-label="Cancel rename">✕</button>
+      </div>`;
+    }
+    const armed = confirmDeleteListId === x.id;
     return `<div class="list-manage-row">
       <button type="button" class="list-manage-name" data-list-pick="${x.id}">${listEmoji(x)} <b>${esc(x.name)}</b> <span class="settled-note">${p} to do · ${d} done</span></button>
       <button type="button" class="list-mini" data-list-rename="${x.id}" aria-label="Rename ${esc(x.name)}">✏️</button>
-      <button type="button" class="list-mini danger-text" data-list-del="${x.id}" aria-label="Delete ${esc(x.name)}">🗑</button>
+      <button type="button" class="list-mini ${armed ? 'danger-armed' : 'danger-text'}" data-list-del="${x.id}" aria-label="Delete ${esc(x.name)}">${armed ? 'Sure?' : '🗑'}</button>
     </div>`;
   }).join('');
 }
@@ -577,6 +616,7 @@ $('addBtnSide').addEventListener('click', () => openSheet(null));
 /* ---------- navigation & lists ---------- */
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
   activeTab = b.dataset.tab;
+  document.body.dataset.tab = activeTab;
   document.querySelectorAll('.nav-btn').forEach(x => x.classList.toggle('active', x.dataset.tab === activeTab));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + activeTab));
 }));
@@ -655,10 +695,11 @@ $('addItemForm').addEventListener('submit', ev => {
     who: $('newItemAssignee').value || '',
     due: $('newItemDue').value || '',
     note: $('newItemNote').value.trim(),
+    shop: l.kind === 'shop' ? l.name : $('newItemShop').value.trim(),
     done: false, createdAt: localNowValue()
   });
   $('newItemText').value = '';
-  $('newItemQty').value = ''; $('newItemNote').value = ''; $('newItemDue').value = '';
+  $('newItemQty').value = ''; $('newItemNote').value = ''; $('newItemDue').value = ''; $('newItemShop').value = '';
   save(); renderLists();
   toast('Added to ' + l.name + ' ✓');
 });
@@ -666,18 +707,35 @@ $('addListForm').addEventListener('submit', ev => {
   ev.preventDefault();
   const name = $('newListName').value.trim();
   if (!name) return;
-  const l = { id: uid(), name, kind: $('newListKind').value || 'general', items: [] };
+  const existing = state.lists.find(x => x.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    $('newListName').value = '';
+    setActiveList(existing.id);
+    toast('That shop list already exists');
+    return;
+  }
+  const l = { id: uid(), name, kind: 'shop', items: [] };
   state.lists.push(l);
   $('newListName').value = '';
   save(); setActiveList(l.id);
   toast(name + ' list created ✓');
+});
+$('addGeneralBtn').addEventListener('click', () => {
+  let general = state.lists.find(x => x.kind === 'general');
+  if (!general) {
+    general = { id: uid(), name: 'General', kind: 'general', items: [] };
+    state.lists.unshift(general);
+    save();
+    toast('General list created ✓');
+  }
+  setActiveList(general.id);
 });
 $('copyListBtn').addEventListener('click', () => {
   const l = activeList();
   if (!l) return;
   const lines = [(listEmoji(l) + ' ' + l.name)];
   l.items.forEach(it => {
-    lines.push(`${it.done ? '☑' : '☐'} ${it.text}${it.qty ? ' — ' + it.qty : ''}${it.note ? ' (' + it.note + ')' : ''}`);
+    lines.push(`${it.done ? '☑' : '☐'} ${it.text}${it.qty ? ' — ' + it.qty : ''}${it.shop && it.shop !== l.name ? ' @ ' + it.shop : ''}${it.note ? ' (' + it.note + ')' : ''}`);
   });
   const text = lines.join('\n');
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -712,6 +770,19 @@ document.addEventListener('change', ev => {
     }
   }
 });
+document.addEventListener('keydown', ev => {
+  if (!ev.target.matches('[data-rename-input]')) return;
+  if (ev.key === 'Enter') {
+    ev.preventDefault();
+    const id = ev.target.dataset.renameInput;
+    const l = state.lists.find(x => x.id === id);
+    const name = ev.target.value.trim();
+    if (l && name && name !== l.name) { l.name = name; save(); toast('List renamed ✓'); }
+    renamingListId = null;
+    renderLists();
+  }
+  if (ev.key === 'Escape') { renamingListId = null; renderLists(); }
+});
 document.addEventListener('click', ev => {
   const pick = ev.target.closest('[data-list-pick]');
   if (pick) { setActiveList(pick.dataset.listPick); return; }
@@ -725,25 +796,48 @@ document.addEventListener('click', ev => {
   }
   const ren = ev.target.closest('[data-list-rename]');
   if (ren) {
-    const l = state.lists.find(x => x.id === ren.dataset.listRename);
-    if (!l) return;
-    const name = prompt('Rename list', l.name);
-    if (name && name.trim() && name.trim() !== l.name) {
-      l.name = name.trim();
-      save(); renderLists();
-      toast('List renamed ✓');
-    }
+    renamingListId = ren.dataset.listRename;
+    confirmDeleteListId = null;
+    renderLists();
+    const input = document.querySelector(`[data-rename-input="${renamingListId}"]`);
+    if (input) { input.focus(); input.select(); }
     return;
   }
+  const renSave = ev.target.closest('[data-rename-save]');
+  if (renSave) {
+    const id = renSave.dataset.renameSave;
+    const l = state.lists.find(x => x.id === id);
+    const input = document.querySelector(`[data-rename-input="${id}"]`);
+    const name = input ? input.value.trim() : '';
+    if (l && name && name !== l.name) { l.name = name; save(); toast('List renamed ✓'); }
+    renamingListId = null;
+    renderLists();
+    return;
+  }
+  const renCancel = ev.target.closest('[data-rename-cancel]');
+  if (renCancel) { renamingListId = null; renderLists(); return; }
   const delList = ev.target.closest('[data-list-del]');
   if (delList) {
-    const l = state.lists.find(x => x.id === delList.dataset.listDel);
-    if (!l) return;
-    if (!confirm(`Delete the list "${l.name}" and all its items?`)) return;
-    state.lists = state.lists.filter(x => x.id !== l.id);
-    ensureLists();
-    save(); renderLists();
-    toast('List deleted');
+    const id = delList.dataset.listDel;
+    if (confirmDeleteListId === id) {
+      // Second tap confirms the delete — no native dialog involved.
+      clearTimeout(confirmDeleteTimer);
+      confirmDeleteListId = null;
+      const l = state.lists.find(x => x.id === id);
+      if (!l) return;
+      state.lists = state.lists.filter(x => x.id !== id);
+      ensureLists();
+      save(); renderLists();
+      toast('List deleted');
+    } else {
+      confirmDeleteListId = id;
+      renderLists();
+      toast('Tap Sure? to delete this list');
+      clearTimeout(confirmDeleteTimer);
+      confirmDeleteTimer = setTimeout(() => {
+        if (confirmDeleteListId === id) { confirmDeleteListId = null; renderLists(); }
+      }, 5000);
+    }
     return;
   }
   const recent = ev.target.closest('[data-recent-add]');
@@ -757,6 +851,7 @@ document.addEventListener('click', ev => {
       qty: prev ? prev.qty || '' : '',
       cat: prev ? prev.cat || 'General' : 'General',
       who: '', due: '', note: '',
+      shop: prev ? prev.shop || '' : '',
       done: false, createdAt: localNowValue()
     });
     save(); renderLists();
@@ -964,6 +1059,7 @@ $('receiptFile').addEventListener('change', async ev => {
 })();
 fillCategorySelects();
 render();
+document.body.dataset.tab = activeTab;
 initSync();
 
 // ---------- theme: system default + manual override, per device ----------
