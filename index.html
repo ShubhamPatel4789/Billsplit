@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b7a4b">
 <title>Budget &amp; Bill Splitter</title>
 <script>(function(){try{var c=localStorage.getItem('billsplit.theme')||'system';var d=c==='dark'||(c==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
-<link rel="stylesheet" href="styles.css?v=12">
+<link rel="stylesheet" href="styles.css?v=13">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
 </head>
 <body>
@@ -18,6 +18,7 @@
       <button data-tab="expenses" class="nav-btn"><span>🧾</span>Expenses</button>
       <button data-tab="split" class="nav-btn"><span>👥</span>Split</button>
       <button data-tab="budget" class="nav-btn"><span>🎯</span>Budget</button>
+      <button data-tab="lists" class="nav-btn"><span>📋</span>Lists</button>
     </nav>
     <button class="add-btn side-add" id="addBtnSide">＋ Add expense</button>
     <div class="seg-label">Appearance</div>
@@ -156,6 +157,56 @@
         </div>
       </div>
     </section>
+
+    <!-- LISTS -->
+    <section id="view-lists" class="view">
+      <div class="card">
+        <div class="list-picker" id="listPicker"></div>
+        <div class="list-head">
+          <h2 id="activeListName">Lists</h2>
+          <div class="list-count" id="activeListCount"></div>
+        </div>
+        <form id="addItemForm">
+          <div class="row">
+            <input type="text" id="newItemText" placeholder="Add an item…" maxlength="80" required>
+            <button type="submit" class="primary add-item-btn">Add</button>
+          </div>
+          <button type="button" id="itemOptionsToggle" class="link-btn">＋ Quantity, category &amp; more</button>
+          <div id="itemOptions" class="hidden">
+            <div class="row">
+              <input type="text" id="newItemQty" placeholder="Qty (e.g. 2 kg)" maxlength="20">
+              <select id="newItemCategory" aria-label="Item category"></select>
+            </div>
+            <div class="row">
+              <select id="newItemAssignee" aria-label="Who is it for"></select>
+              <input type="date" id="newItemDue" aria-label="Due date">
+            </div>
+            <input type="text" id="newItemNote" placeholder="Note (optional)" maxlength="120">
+          </div>
+        </form>
+        <div id="recentChips" class="recent-chips"></div>
+        <div id="listItems"></div>
+        <div class="list-foot-actions">
+          <button type="button" id="copyListBtn" class="secondary">📋 Copy list</button>
+          <button type="button" id="uncheckAllBtn" class="secondary">↩ Uncheck all</button>
+          <button type="button" id="clearDoneBtn" class="secondary">🧹 Clear done</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Your lists</h2>
+        <div id="allLists"></div>
+        <form id="addListForm" class="inline-form">
+          <select id="newListKind" aria-label="List type">
+            <option value="shopping">🛒 Shopping</option>
+            <option value="errands">🚗 Errands</option>
+            <option value="general">📋 General</option>
+          </select>
+          <input type="text" id="newListName" placeholder="New list name…" maxlength="40" required>
+          <button type="submit">Add list</button>
+        </form>
+        <p class="hint" style="margin-top:12px">Lists sync live to every phone with this app, just like expenses — and they are included in the JSON backup.</p>
+      </div>
+    </section>
   </main>
 
   <button class="fab" id="addBtnFab" aria-label="Add expense">＋</button>
@@ -165,6 +216,7 @@
     <button data-tab="expenses" class="nav-btn"><span>🧾</span>Expenses</button>
     <button data-tab="split" class="nav-btn"><span>👥</span>Split</button>
     <button data-tab="budget" class="nav-btn"><span>🎯</span>Budget</button>
+    <button data-tab="lists" class="nav-btn"><span>📋</span>Lists</button>
   </nav>
 </div>
 
@@ -209,6 +261,6 @@
 <div class="toast" id="toast"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

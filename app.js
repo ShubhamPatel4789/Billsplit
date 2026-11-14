@@ -71,6 +71,7 @@ function adoptRemote(remote) {
     const parsed = JSON.parse(remote);
     if (!parsed || !Array.isArray(parsed.expenses) || !Array.isArray(parsed.people)) return;
     state = parsed;
+    ensureLists();
     try { localStorage.setItem(LS_KEY, remote); } catch (e) {}
     const months = [...new Set(state.expenses.map(e => monthKey(e.date)))].sort();
     if (!months.includes(viewMonth)) viewMonth = months.length ? months[months.length - 1] : nowMonthKey();
@@ -108,6 +109,59 @@ function initSync() {
   }
 }
 
+/* ---------- shared lists (groceries, errands, anything) ---------- */
+const LIST_KINDS = {
+  shopping: { emoji: '🛒', label: 'Shopping' },
+  errands: { emoji: '🚗', label: 'Errands' },
+  general: { emoji: '📋', label: 'General' }
+};
+const LIST_CATS = {
+  shopping: ['General', 'Produce', 'Dairy & Eggs', 'Bakery', 'Pantry', 'Frozen', 'Household', 'Other'],
+  errands: ['General', 'Car', 'Home', 'Documents', 'Shopping', 'Health', 'Other'],
+  general: ['General', 'Home', 'Work', 'Shopping', 'Other']
+};
+const listEmoji = l => (LIST_KINDS[l.kind] || LIST_KINDS.general).emoji;
+const listCats = l => LIST_CATS[l.kind] || LIST_CATS.general;
+const ACTIVE_LIST_KEY = 'billsplit.activeList';
+let activeListId = null;
+try { activeListId = localStorage.getItem(ACTIVE_LIST_KEY); } catch (e) {}
+function ensureLists() {
+  if (!Array.isArray(state.lists)) state.lists = [];
+  state.lists.forEach(l => {
+    if (!Array.isArray(l.items)) l.items = [];
+    if (!l.kind) l.kind = 'general';
+    l.items.forEach(it => { if (it.done == null) it.done = false; if (!it.cat) it.cat = 'General'; });
+  });
+  if (!state.lists.length) {
+    state.lists = [
+      { id: uid(), name: 'Groceries', kind: 'shopping', items: [] },
+      { id: uid(), name: 'Car errands', kind: 'errands', items: [] }
+    ];
+  }
+}
+function activeList() {
+  ensureLists();
+  let l = state.lists.find(x => x.id === activeListId);
+  if (!l) { l = state.lists[0]; activeListId = l ? l.id : null; }
+  return l;
+}
+function setActiveList(id) {
+  activeListId = id;
+  try { localStorage.setItem(ACTIVE_LIST_KEY, id); } catch (e) {}
+  renderLists();
+}
+const todayStr = () => {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function dueLabel(due) {
+  if (!due) return '';
+  const parts = due.split('-');
+  if (parts.length !== 3) return '';
+  return `${+parts[2]} ${MONTHS_SHORT[+parts[1] - 1] || ''}`;
+}
+
 function seedState() {
   const personal = (title, amount, category, date) => ({
     id: uid() + Math.random().toString(36).slice(2, 6), title, amount, category, date,
@@ -127,7 +181,11 @@ function seedState() {
       personal('Walmart order personal items 11th Sep', 67.21, 'Groceries', '2026-09-11T13:25')
     ],
     recurring: [],
-    settlements: []
+    settlements: [],
+    lists: [
+      { id: uid(), name: 'Groceries', kind: 'shopping', items: [] },
+      { id: uid(), name: 'Car errands', kind: 'errands', items: [] }
+    ]
   };
 }
 
@@ -135,6 +193,7 @@ let state;
 try {
   const raw = localStorage.getItem(LS_KEY);
   state = raw ? JSON.parse(raw) : seedState();
+  ensureLists();
   if (!raw) save();
 } catch (e) { state = seedState(); }
 function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
@@ -204,7 +263,7 @@ function render() {
     if (![...ys.options].some(o => o.value === y)) ys.add(new Option(y, y));
     ys.value = y;
   }
-  renderSummary(); renderExpenses(); renderSplit(); renderBudget();
+  renderSummary(); renderExpenses(); renderSplit(); renderBudget(); renderLists();
 }
 
 function renderSummary() {
@@ -306,6 +365,92 @@ function renderBudget() {
       ${added ? '<span class="settled-note">Added ✓</span>' : `<button class="rec-add" data-rec-add="${r.id}">Add for ${monthLabel(viewMonth).split(' ')[0]}</button>`}
       <button class="rec-del" data-rec-del="${r.id}" aria-label="Delete recurring bill">×</button></div>`;
   }).join('') : '<div class="empty">No recurring bills yet.</div>';
+}
+
+/* ---------- lists tab ---------- */
+function listItemMeta(it) {
+  const parts = [];
+  if (it.cat && it.cat !== 'General') parts.push(esc(it.cat));
+  if (it.who) parts.push('👤 ' + esc(personName(it.who)));
+  if (it.due) {
+    const overdue = !it.done && it.due < todayStr();
+    parts.push(overdue
+      ? `<span class="overdue">📅 Overdue · ${dueLabel(it.due)}</span>`
+      : `📅 ${dueLabel(it.due)}`);
+  }
+  if (it.note) parts.push(esc(it.note));
+  return parts.join(' · ');
+}
+function listItemRow(it) {
+  return `<div class="list-item ${it.done ? 'done' : ''}">
+    <input type="checkbox" data-toggle-item="${it.id}" ${it.done ? 'checked' : ''} aria-label="Mark ${esc(it.text)} as ${it.done ? 'not done' : 'done'}">
+    <div class="list-item-main">
+      <div class="list-item-text">${esc(it.text)}${it.qty ? ` <span class="qty">${esc(it.qty)}</span>` : ''}</div>
+      ${listItemMeta(it) ? `<div class="list-item-meta">${listItemMeta(it)}</div>` : ''}
+    </div>
+    <button type="button" class="list-del" data-del-item="${it.id}" aria-label="Delete ${esc(it.text)}">×</button>
+  </div>`;
+}
+function recentItems() {
+  const active = activeList();
+  const inActive = new Set((active.items || []).filter(i => !i.done).map(i => i.text.toLowerCase()));
+  const all = state.lists.flatMap(l => l.items);
+  all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const seen = new Set(), out = [];
+  for (const it of all) {
+    const k = (it.text || '').toLowerCase();
+    if (!k || seen.has(k) || inActive.has(k)) continue;
+    seen.add(k);
+    out.push(it);
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+function renderLists() {
+  const l = activeList();
+  if (!l) { $('listPicker').innerHTML = ''; $('listItems').innerHTML = '<div class="empty">No lists yet — create one below.</div>'; return; }
+  const pending = l.items.filter(i => !i.done);
+  const done = l.items.filter(i => i.done);
+  $('listPicker').innerHTML = state.lists.map(x => {
+    const p = x.items.filter(i => !i.done).length;
+    return `<button type="button" class="list-chip ${x.id === l.id ? 'active' : ''}" data-list-pick="${x.id}">${listEmoji(x)} ${esc(x.name)} <span class="chip-count">${p}</span></button>`;
+  }).join('');
+  $('activeListName').textContent = listEmoji(l) + ' ' + l.name;
+  $('activeListCount').textContent = l.items.length
+    ? `${pending.length} to do · ${done.length} done`
+    : 'Empty list';
+  $('newItemCategory').innerHTML = listCats(l).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  $('newItemAssignee').innerHTML = '<option value="">Anyone</option>' +
+    state.people.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  const recent = recentItems();
+  $('recentChips').innerHTML = recent.length
+    ? '<span class="chip-label">Add again</span>' + recent.map(it =>
+      `<button type="button" class="recent-chip" data-recent-add="${esc(it.text)}">＋ ${esc(it.text)}</button>`).join('')
+    : '';
+  const cats = listCats(l);
+  const usedCats = [...new Set(pending.map(i => i.cat || 'General'))];
+  const showHeaders = usedCats.length > 1;
+  let html = '';
+  cats.forEach(c => {
+    const items = pending.filter(i => (i.cat || 'General') === c);
+    if (!items.length) return;
+    if (showHeaders && c !== 'General') html += `<div class="list-cat">${esc(c)}</div>`;
+    html += items.map(listItemRow).join('');
+  });
+  if (!pending.length) html += '<div class="empty">Nothing to do — add your first item above.</div>';
+  if (done.length) {
+    html += `<div class="done-head">Done (${done.length})</div>` + done.map(listItemRow).join('');
+  }
+  $('listItems').innerHTML = html;
+  $('allLists').innerHTML = state.lists.map(x => {
+    const p = x.items.filter(i => !i.done).length;
+    const d = x.items.filter(i => i.done).length;
+    return `<div class="list-manage-row">
+      <button type="button" class="list-manage-name" data-list-pick="${x.id}">${listEmoji(x)} <b>${esc(x.name)}</b> <span class="settled-note">${p} to do · ${d} done</span></button>
+      <button type="button" class="list-mini" data-list-rename="${x.id}" aria-label="Rename ${esc(x.name)}">✏️</button>
+      <button type="button" class="list-mini danger-text" data-list-del="${x.id}" aria-label="Delete ${esc(x.name)}">🗑</button>
+    </div>`;
+  }).join('');
 }
 
 /* ---------- recurring ---------- */
@@ -490,6 +635,136 @@ $('addPersonForm').addEventListener('submit', ev => {
   save(); render(); toast(`${name} added ✓`);
 });
 
+/* ---------- lists tab events ---------- */
+$('itemOptionsToggle').addEventListener('click', () => {
+  const opts = $('itemOptions');
+  opts.classList.toggle('hidden');
+  $('itemOptionsToggle').textContent = opts.classList.contains('hidden')
+    ? '＋ Quantity, category & more' : '－ Fewer options';
+});
+$('addItemForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const l = activeList();
+  if (!l) return;
+  const text = $('newItemText').value.trim();
+  if (!text) return;
+  l.items.push({
+    id: uid(), text,
+    qty: $('newItemQty').value.trim(),
+    cat: $('newItemCategory').value || 'General',
+    who: $('newItemAssignee').value || '',
+    due: $('newItemDue').value || '',
+    note: $('newItemNote').value.trim(),
+    done: false, createdAt: localNowValue()
+  });
+  $('newItemText').value = '';
+  $('newItemQty').value = ''; $('newItemNote').value = ''; $('newItemDue').value = '';
+  save(); renderLists();
+  toast('Added to ' + l.name + ' ✓');
+});
+$('addListForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const name = $('newListName').value.trim();
+  if (!name) return;
+  const l = { id: uid(), name, kind: $('newListKind').value || 'general', items: [] };
+  state.lists.push(l);
+  $('newListName').value = '';
+  save(); setActiveList(l.id);
+  toast(name + ' list created ✓');
+});
+$('copyListBtn').addEventListener('click', () => {
+  const l = activeList();
+  if (!l) return;
+  const lines = [(listEmoji(l) + ' ' + l.name)];
+  l.items.forEach(it => {
+    lines.push(`${it.done ? '☑' : '☐'} ${it.text}${it.qty ? ' — ' + it.qty : ''}${it.note ? ' (' + it.note + ')' : ''}`);
+  });
+  const text = lines.join('\n');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => toast('List copied ✓')).catch(() => toast('Could not copy'));
+  } else { toast('Copy not supported in this browser'); }
+});
+$('clearDoneBtn').addEventListener('click', () => {
+  const l = activeList();
+  if (!l) return;
+  const n = l.items.filter(i => i.done).length;
+  if (!n) { toast('Nothing done to clear'); return; }
+  l.items = l.items.filter(i => !i.done);
+  save(); renderLists();
+  toast(n + ' done item' + (n === 1 ? '' : 's') + ' cleared ✓');
+});
+$('uncheckAllBtn').addEventListener('click', () => {
+  const l = activeList();
+  if (!l) return;
+  l.items.forEach(i => { i.done = false; i.doneAt = null; });
+  save(); renderLists();
+  toast('All items unchecked');
+});
+document.addEventListener('change', ev => {
+  const t = ev.target.closest('[data-toggle-item]');
+  if (t) {
+    const l = activeList();
+    const it = (l.items || []).find(i => i.id === t.dataset.toggleItem);
+    if (it) {
+      it.done = t.checked;
+      it.doneAt = t.checked ? localNowValue() : null;
+      save(); renderLists();
+    }
+  }
+});
+document.addEventListener('click', ev => {
+  const pick = ev.target.closest('[data-list-pick]');
+  if (pick) { setActiveList(pick.dataset.listPick); return; }
+  const delItem = ev.target.closest('[data-del-item]');
+  if (delItem) {
+    const l = activeList();
+    l.items = l.items.filter(i => i.id !== delItem.dataset.delItem);
+    save(); renderLists();
+    toast('Item removed');
+    return;
+  }
+  const ren = ev.target.closest('[data-list-rename]');
+  if (ren) {
+    const l = state.lists.find(x => x.id === ren.dataset.listRename);
+    if (!l) return;
+    const name = prompt('Rename list', l.name);
+    if (name && name.trim() && name.trim() !== l.name) {
+      l.name = name.trim();
+      save(); renderLists();
+      toast('List renamed ✓');
+    }
+    return;
+  }
+  const delList = ev.target.closest('[data-list-del]');
+  if (delList) {
+    const l = state.lists.find(x => x.id === delList.dataset.listDel);
+    if (!l) return;
+    if (!confirm(`Delete the list "${l.name}" and all its items?`)) return;
+    state.lists = state.lists.filter(x => x.id !== l.id);
+    ensureLists();
+    save(); renderLists();
+    toast('List deleted');
+    return;
+  }
+  const recent = ev.target.closest('[data-recent-add]');
+  if (recent) {
+    const l = activeList();
+    if (!l) return;
+    const text = recent.dataset.recentAdd;
+    const prev = state.lists.flatMap(x => x.items).find(i => i.text === text);
+    l.items.push({
+      id: uid(), text,
+      qty: prev ? prev.qty || '' : '',
+      cat: prev ? prev.cat || 'General' : 'General',
+      who: '', due: '', note: '',
+      done: false, createdAt: localNowValue()
+    });
+    save(); renderLists();
+    toast('Added to ' + l.name + ' ✓');
+    return;
+  }
+});
+
 /* ---------- budget tab ---------- */
 $('monthlyBudgetForm').addEventListener('submit', ev => {
   ev.preventDefault();
@@ -539,6 +814,7 @@ $('importFile').addEventListener('change', ev => {
       const data = JSON.parse(reader.result);
       if (!data || !Array.isArray(data.expenses) || !Array.isArray(data.people) || !data.settings) throw new Error('bad file');
       state = data;
+      ensureLists();
       save();
       viewMonth = nowMonthKey();
       render();
