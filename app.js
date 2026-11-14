@@ -128,7 +128,7 @@ const listEmoji = l => (LIST_KINDS[l.kind] || LIST_KINDS.general).emoji;
 const listCats = l => LIST_CATS[l.kind] || LIST_CATS.general;
 const ACTIVE_LIST_KEY = 'billsplit.activeList';
 let activeListId = null;
-let renamingListId = null, confirmDeleteListId = null, confirmDeleteTimer = null;
+let renamingListId = null, confirmDeleteListId = null;
 try { activeListId = localStorage.getItem(ACTIVE_LIST_KEY); } catch (e) {}
 function ensureLists() {
   if (!Array.isArray(state.lists)) state.lists = [];
@@ -821,7 +821,8 @@ document.addEventListener('click', ev => {
     const id = delList.dataset.listDel;
     if (confirmDeleteListId === id) {
       // Second tap confirms the delete — no native dialog involved.
-      clearTimeout(confirmDeleteTimer);
+      // The armed state never expires on its own: if the button says
+      // "Sure?", tapping it always deletes, so the label never lies.
       confirmDeleteListId = null;
       const l = state.lists.find(x => x.id === id);
       if (!l) return;
@@ -833,10 +834,6 @@ document.addEventListener('click', ev => {
       confirmDeleteListId = id;
       renderLists();
       toast('Tap Sure? to delete this list');
-      clearTimeout(confirmDeleteTimer);
-      confirmDeleteTimer = setTimeout(() => {
-        if (confirmDeleteListId === id) { confirmDeleteListId = null; renderLists(); }
-      }, 5000);
     }
     return;
   }
