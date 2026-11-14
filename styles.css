@@ -192,3 +192,40 @@ html,body{max-width:100%}
 .scan-track{height:8px;background:var(--track);border-radius:99px;overflow:hidden}
 .scan-fill{height:100%;width:0;background:var(--green);border-radius:99px;transition:width .25s ease}
 .scan-label{font-size:13px;color:var(--muted);text-align:center;margin-top:6px}
+
+/* --- lists tab --- */
+.list-picker{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.list-chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1.5px solid var(--border);border-radius:999px;padding:8px 13px;font-weight:700;font-size:14px}
+.list-chip.active{background:var(--tint);border-color:var(--accent);color:var(--accent-strong)}
+.chip-count{background:var(--chip-bg);border-radius:99px;padding:1px 8px;font-size:12px}
+.list-chip.active .chip-count{background:var(--card)}
+.list-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+.list-head h2{margin:0}
+.list-count{color:var(--muted);font-size:13px;font-weight:600;white-space:nowrap}
+#addItemForm .add-item-btn{flex:none;width:auto;padding:11px 20px}
+#itemOptionsToggle{margin:2px 0 10px;padding:4px 0}
+#itemOptions{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.recent-chips{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px}
+.recent-chips .chip-label{width:100%;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.recent-chip{background:var(--tint-soft);border:1px solid var(--border);color:var(--accent-strong);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
+.list-cat{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 2px}
+.list-item{display:flex;align-items:flex-start;gap:11px;padding:11px 2px;border-bottom:1px solid var(--border)}
+.list-item:last-child{border-bottom:none}
+.list-item input[type=checkbox]{width:22px;height:22px;accent-color:var(--green);flex:none;margin-top:1px}
+.list-item-main{flex:1;min-width:0}
+.list-item-text{font-weight:600;font-size:14.5px;overflow-wrap:anywhere}
+.list-item-text .qty{color:var(--muted);font-weight:700;font-size:13px}
+.list-item-meta{color:var(--muted);font-size:12.5px;margin-top:1px;overflow-wrap:anywhere}
+.list-item-meta .overdue{color:var(--danger);font-weight:700}
+.list-item.done .list-item-text{color:var(--muted);text-decoration:line-through}
+.list-item.done .list-item-meta{text-decoration:line-through}
+.list-del{color:var(--danger);font-size:20px;padding:0 6px;flex:none;line-height:1.2}
+.done-head{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 2px}
+.list-foot-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.list-foot-actions .secondary{flex:1;padding:10px 8px;font-size:13.5px;white-space:nowrap}
+.list-manage-row{display:flex;align-items:center;gap:6px;padding:9px 2px;border-bottom:1px solid var(--border)}
+.list-manage-row:last-child{border-bottom:none}
+.list-manage-name{flex:1;min-width:0;text-align:left;font-size:14.5px;overflow-wrap:anywhere}
+.list-mini{flex:none;width:34px;height:34px;border-radius:9px;font-size:15px}
+.list-mini:active{background:var(--border)}
+.danger-text{color:var(--danger)}
